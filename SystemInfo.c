@@ -17,6 +17,7 @@ char *getKernelVer(void) {
     int outputLen = strlen(releaseInfo.release);
     ret = (char *)malloc((outputLen + 1) * sizeof(char));
     if (ret) {
+      // create a copy on the heap
       strcpy(ret, releaseInfo.release);
     }
   }
@@ -107,7 +108,7 @@ void delStrtChars(char *toClean, int toCleanLen, int toRem) {
       // move the '\0'
       *toClean = *targetStrt;
     }
-    // TODO: put some error handleing here
+    // if we are asked to delete more than we have do nothing
   }
 }
 
@@ -149,6 +150,7 @@ char *getLinNmFrom(char *fileNm) {
     if (prettyLinNm) {
       if (linNm) {
         free(linNm);
+        linNm = NULL;
       }
       ret = prettyLinNm;
     } else {
@@ -157,7 +159,9 @@ char *getLinNmFrom(char *fileNm) {
       }
     }
 
-    cleanLinNmStr(ret, strlen(ret));
+    if (ret) {
+      cleanLinNmStr(ret, strlen(ret));
+    }
 
     fclose(osInfoFile);
   }
