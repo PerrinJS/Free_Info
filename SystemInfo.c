@@ -93,7 +93,9 @@ char *restOfLineStartingWith(FILE *toSearch, char *sLine, int sLineLen) {
         ret = (char *)realloc(ret, retBufLen);
       }
     }
+    ret[currPos] = '\0';
   }
+
   return ret;
 }
 
@@ -113,7 +115,8 @@ void delStrtChars(char *toClean, int toCleanLen, int toRem) {
   }
 }
 
-// removes the '=' and surrounding quotes from string read from /etc/os-release
+/* removes the '=' and surrounding quotes from string read
+ * from /etc/os-release */
 void cleanLinNmStr(char *toClean, int toCleanLen) {
   if (toClean) {
     // remove the quote at the end first as we know where it is atm
@@ -205,6 +208,8 @@ int main(void) {
   char *kVerStr = getKernelVer();
   bad += IS_ZERO(kVerStr);
 
+  /* TODO: add features to read from ~/.inflocal when can't find
+   * /etc/os-release or are told to by cmd args */
   char *linName = getLinNmFrom("/etc/os-release");
   bad += IS_ZERO(linName);
 
@@ -216,7 +221,7 @@ int main(void) {
     // this culminates in us having a blank line below
     printf("%s\n", timeStr);
   } else
-    printf("Opps something went wrong error: %d", bad);
+    printf("Oops something went wrong error #%d", bad);
 
   void *to_clean[] = {(void *)kVerStr, (void *)linName, (void *)timeStr};
   return cleanUp(to_clean, sizeof(to_clean) / sizeof(void *));
