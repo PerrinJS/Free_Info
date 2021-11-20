@@ -89,7 +89,8 @@ char *restOfLineStartingWith(FILE *toSearch, char *sLine, int sLineLen) {
       }
       // we filled the buffer but didn't finish reading
       if (NOT_EOF_NL(currch)) {
-        ret = (char *)realloc(ret, retBufLen + 20);
+        retBufLen += 20;
+        ret = (char *)realloc(ret, retBufLen);
       }
     }
   }
