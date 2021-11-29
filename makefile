@@ -1,11 +1,11 @@
 CC = gcc
 CFLAGS = -Wall
 
-systeminfo : SystemInfo.c
-	$(CC) $?  $(CFLAGS) -o systeminfo
+freeinfo : FreeInfo.c
+	$(CC) $?  $(CFLAGS) -o freeinfo
 
 install : systeminfo
-	mv systeminfo ~/.logingreeting
+	mv freeinfo ~/.logingreeting
 
 clean : 
-	rm -rf *.o systeminfo
+	rm -rf *.o freeinfo
