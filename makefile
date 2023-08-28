@@ -1,11 +1,12 @@
-CC = gcc
+CC = clang
+CPP = clang++
 CFLAGS = -Wall
 
-freeinfo : InfoGetters.o FreeInfo.c
-	$(CC) $?  $(CFLAGS) -o $@
+freeinfo : InfoGetters.o FreeInfo.cpp
+	$(CPP) $?  $(CFLAGS) -o $@
 
 InfoGetters.o : InfoGetters.c
-	$(CC) $? $(CFLAGS) -c -o $@
+	$(CPP) $? $(CFLAGS) -c -o $@
 
 install : systeminfo
 	mv freeinfo ~/.logingreeting

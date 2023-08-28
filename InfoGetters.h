@@ -13,7 +13,7 @@ void delStrtChars(char *toClean, int toCleanLen, int toRem);
  * from /etc/os-release */
 void cleanLinNmStr(char *toClean, int toCleanLen);
 // This only has a parameter so we can make a mock /etc/os-release
-char *getLinNmFrom(char *fileNm);
+char *getLinNmFrom(const char *fileNm);
 char *getTimeStr(void);
 
 #endif

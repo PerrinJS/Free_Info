@@ -137,7 +137,7 @@ void cleanLinNmStr(char *toClean, int toCleanLen) {
 }
 
 // This only has a parameter so we can make a mock /etc/os-release
-char *getLinNmFrom(char *fileNm) {
+char *getLinNmFrom(const char *fileNm) {
   /* THIS IS ONLY INTENDED TO BE USED WITH A /etc/os-release FILE */
   char *ret = NULL;
   FILE *osInfoFile = fopen(fileNm, "r");
