@@ -1,48 +1,116 @@
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "FreeInfo.h"
-#include "InfoGetters.h"
+#include "InfoGetters.hpp"
 #include "argparse/include/argparse/argparse.hpp"
 #include "InfoStrParser.hpp"
 
-bool cleanUp(void **to_clean, int to_clean_len) {
-  bool bad = 0;
-  for (int i = 0; i < to_clean_len; i++) {
-    if (!IS_ZERO(to_clean[i]))
-      free(to_clean[i]);
-    else
-      bad += 1;
+#include <sstream>
+#include <optional>
+#include <list>
+#include <regex>
+#include <unordered_map>
+#include <functional>
+
+class InfoGetter {
+private:
+    std::string osRelFile;
+    std::unordered_map<std::string, std::function<char*()>> infoFlagFuncMap;
+    std::list<char*> generatedStringsToDel;
+
+    void infoFuncMapSetup(){
+      infoFlagFuncMap["%KVR"] = getKernelVer;
+      infoFlagFuncMap["%LVR"] = [this](){return getLinNmFrom(this->osRelFile.c_str());};
+      infoFlagFuncMap["%TIM"] = getTimeStr;
+    }
+
+public:
+    InfoGetter(): osRelFile(), infoFlagFuncMap(), generatedStringsToDel(){
+        infoFuncMapSetup();
+    }
+
+    InfoGetter(std::string osRLF): osRelFile(osRLF), infoFlagFuncMap(), generatedStringsToDel(){
+        infoFuncMapSetup();
+    }
+
+    ~InfoGetter(){
+      for(auto i = generatedStringsToDel.begin(); i != generatedStringsToDel.end(); i++){
+        //Thease strings where allocated with malloc so best to use free
+        if (*i != nullptr)
+          free(*i);
+      }
+    }
+
+    void setOSReleaseFile(std::string osRLF){
+      this->osRelFile = osRLF;
+    }
+
+    std::optional<std::string> getStringFromMatch(std::string in){
+      std::optional<std::string> ret = std::nullopt;
+      if(auto tmp = infoFlagFuncMap[in]){
+        char *resCStr = tmp();
+        //Some functions return null when they fail
+        if (resCStr)
+          ret = std::optional(std::string(resCStr));
+        if(ret.has_value())
+          generatedStringsToDel.push_front(resCStr);
+      }
+
+      return ret;
+    }
+};
+
+int insertFeatureData(std::string& output, std::string& feature, InfoGetter& ig) {
+  auto potentialFeatureData = ig.getStringFromMatch(feature);
+  auto ret = 0;
+  if (potentialFeatureData.has_value())
+    output += potentialFeatureData.value();
+  else
+    ret = 1;
+
+  return ret;
+}
+
+std::optional<std::string> parseLayoutString(std::string lString, InfoGetter& ig) {
+  //TODO: figure out why we can't also match "\\%"
+  std::regex optMatcher("%[a-zA-Z]{3}");
+  std::smatch match;
+  auto workStr = lString;
+  std::string output = "";
+  auto error = 0;
+
+  while(std::regex_search(workStr, match, optMatcher)){
+    output += workStr.substr(0, match.position(0));
+    auto matchStr = match[0].str();
+    //TODO: when we add the feature to ignore "\\%" add logic here to not set that to insertFeat...
+    error += insertFeatureData(output, matchStr, ig);
+    workStr = match.suffix();
   }
-  return bad;
+  output += workStr.substr(0, match.position(0));
+
+  auto ret = error ? std::nullopt : std::optional(output);
+  return ret;
 }
 
 int main(int argc, char **argv) {
-  //FIXME: make this c accessable and change the build process so c is still built by a c compiler
-  //keep things sepparable.
+  int bad = 0;
   auto args = argparse::parse<Args>(argc, argv);
+  InfoGetter ig(args.verinfo);
 
-  int bad = false;
+  std::string defaultInfo("Running kernel %KVR on %LVR\n%TIM\n");
+  std::string input = defaultInfo;
 
-  char *kVerStr = getKernelVer();
-  bad += IS_ZERO(kVerStr);
+  if(args.layout.length() != 0) {
+    input = args.layout;
+  }
 
-  /* TODO: add features to read from ~/.inflocal when can't find
-   * /etc/os-release or are told to by cmd args */
-  char *linName = getLinNmFrom(args.verinfo.c_str());
-  bad += IS_ZERO(linName);
+  auto outputOr = parseLayoutString(input, ig);
+  if(outputOr.has_value()){
+    puts(outputOr->c_str());
+  } else {
+    bad += PARSE_ERROR;
+  }
+  if(bad)
+    //TODO: print a more usefull error string
+    printf("Oops something went wrong\n");
 
-  char *timeStr = getTimeStr();
-  bad += IS_ZERO(timeStr);
-
-  if (!bad) {
-    printf("Running kernel %s on %s\n", kVerStr, linName);
-    // this culminates in us having a blank line below
-    printf("%s\n", timeStr);
-  } else
-    printf("Oops something went wrong error #%d\n", bad);
-
-  void *to_clean[] = {(void *)kVerStr, (void *)linName, (void *)timeStr};
-  return cleanUp(to_clean, sizeof(to_clean) / sizeof(void *));
+  return 0;
 }
