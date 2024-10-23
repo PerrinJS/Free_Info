@@ -4,7 +4,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+extern "C" {
 char *getKernelVer(void);
+char *readLine(FILE *from);
 int gotoEol(FILE *toMove);
 bool findLineStartingWith(FILE *toSearch, char *sLine, int sLineLen);
 char *restOfLineStartingWith(FILE *toSearch, char *sLine, int sLineLen);
@@ -15,5 +17,6 @@ void cleanLinNmStr(char *toClean, int toCleanLen);
 // This only has a parameter so we can make a mock /etc/os-release
 char *getLinNmFrom(const char *fileNm);
 char *getTimeStr(void);
+};
 
 #endif

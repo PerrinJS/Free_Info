@@ -8,7 +8,6 @@
 #include <sys/utsname.h>
 
 #include "FreeInfo.h"
-#include "InfoGetters.h"
 
 char *getKernelVer(void) {
   struct utsname releaseInfo;
@@ -136,37 +135,63 @@ void cleanLinNmStr(char *toClean, int toCleanLen) {
   }
 }
 
+char *readLine(FILE *from) {
+  const int RETSIZE = 81;
+  char *ret = (char *)malloc(RETSIZE*sizeof(char));
+  int i = 0;
+  char *currPos = ret;
+  char curr = getc(from);
+  //RETSIZE-1 so we always have room for string delimit
+  while (curr != '\n' && curr != EOF && i < RETSIZE-1 ){
+    *currPos = curr;
+    currPos++;
+    curr = getc(from);
+    i++;
+  }
+  currPos++;
+  *currPos = '\0';
+  return ret;
+}
+
 // This only has a parameter so we can make a mock /etc/os-release
 char *getLinNmFrom(const char *fileNm) {
-  /* THIS IS ONLY INTENDED TO BE USED WITH A /etc/os-release FILE */
-  char *ret = NULL;
-  FILE *osInfoFile = fopen(fileNm, "r");
-  // if we couldn't open the file return null
-  if (osInfoFile) {
-    // if we can't find the "PRETTY_NAME" we want a backup
-    char *name = "NAME";
-    char *linNm = restOfLineStartingWith(osInfoFile, name, strlen(name));
 
-    name = "PRETTY_NAME";
-    char *prettyLinNm = restOfLineStartingWith(osInfoFile, name, strlen(name));
+    char *osRelease = "/etc/os-release";
 
-    // if we successfully got the line we wanted (PRETTY_NAME) then cleanup
-    if (prettyLinNm) {
-      if (linNm) {
-        free(linNm);
-        linNm = NULL;
+    char *ret = NULL;
+    FILE *osInfoFile = fopen(fileNm, "r");
+    // if we couldn't open the file return null
+    if (osInfoFile) {
+      if (strcmp(fileNm, osRelease) == 0)
+      {
+        // if we can't find the "PRETTY_NAME" we want a backup
+        char *name = "NAME";
+        char *linNm = restOfLineStartingWith(osInfoFile, name, strlen(name));
+
+        name = "PRETTY_NAME";
+        char *prettyLinNm = restOfLineStartingWith(osInfoFile, name, strlen(name));
+
+        // if we successfully got the line we wanted (PRETTY_NAME) then cleanup
+        if (prettyLinNm) {
+          if (linNm) {
+            free(linNm);
+            linNm = NULL;
+          }
+          ret = prettyLinNm;
+        } else {
+          if (linNm) {
+            ret = linNm;
+          }
+        }
+
+        if (ret) {
+          cleanLinNmStr(ret, strlen(ret));
+        }
+
+      } else {
+        //Assume the name is just the first line of the file
+        ret = readLine(osInfoFile);
       }
-      ret = prettyLinNm;
-    } else {
-      if (linNm) {
-        ret = linNm;
-      }
-    }
-
-    if (ret) {
-      cleanLinNmStr(ret, strlen(ret));
-    }
-
     fclose(osInfoFile);
   }
   return ret;
