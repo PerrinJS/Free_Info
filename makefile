@@ -1,18 +1,20 @@
 CC = clang
 CPP = clang++
 CFLAGS = -Wall -g
+EXE = freeinfo
+HEADERS = FreeInfo.h InfoGetters.hpp InfoStrParser.hpp argparse/include/argparse/argparse.hpp
 
-freeinfo : InfoGetters.o FreeInfo.o
+$(EXE) : InfoGetters.o FreeInfo.o
 	$(CPP) $(CFLAGS) $^ -o $@
 
-FreeInfo.o : FreeInfo.cpp InfoGetters.o
+FreeInfo.o : FreeInfo.cpp InfoGetters.o $(HEADERS) 
 	$(CPP) $(CFLAGS) $< -c -o $@
 
-InfoGetters.o : InfoGetters.c
+InfoGetters.o : InfoGetters.c FreeInfo.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
-install : systeminfo
-	mv freeinfo ~/.logingreeting
+install : $(EXE)
+	mv $< ~/.logingreeting
 
 clean : 
 	rm -rf *.o freeinfo
