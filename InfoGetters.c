@@ -7,8 +7,8 @@
 #include <sys/time.h>
 #include <sys/utsname.h>
 
-#define IS_ZERO(x) ((x) ? false : true)
-#define NOT_EOF_NL(x) (((x) != EOF) && ((x) != '\n'))
+#include "FreeInfo.h"
+#include "LuaScriptRunner.h"
 
 char *getKernelVer(void) {
   struct utsname releaseInfo;
@@ -136,37 +136,63 @@ void cleanLinNmStr(char *toClean, int toCleanLen) {
   }
 }
 
+char *readLine(FILE *from) {
+  const int RETSIZE = 81;
+  char *ret = (char *)malloc(RETSIZE*sizeof(char));
+  int i = 0;
+  char *currPos = ret;
+  char curr = getc(from);
+  //RETSIZE-1 so we always have room for string delimit
+  while (curr != '\n' && curr != EOF && i < RETSIZE-1 ){
+    *currPos = curr;
+    currPos++;
+    curr = getc(from);
+    i++;
+  }
+  currPos++;
+  *currPos = '\0';
+  return ret;
+}
+
 // This only has a parameter so we can make a mock /etc/os-release
-char *getLinNmFrom(char *fileNm) {
-  /* THIS IS ONLY INTENDED TO BE USED WITH A /etc/os-release FILE */
-  char *ret = NULL;
-  FILE *osInfoFile = fopen(fileNm, "r");
-  // if we couldn't open the file return null
-  if (osInfoFile) {
-    // if we can't find the "PRETTY_NAME" we want a backup
-    char *name = "NAME";
-    char *linNm = restOfLineStartingWith(osInfoFile, name, strlen(name));
+char *getLinNmFrom(const char *fileNm) {
 
-    name = "PRETTY_NAME";
-    char *prettyLinNm = restOfLineStartingWith(osInfoFile, name, strlen(name));
+    char *osRelease = "/etc/os-release";
 
-    // if we successfully got the line we wanted (PRETTY_NAME) then cleanup
-    if (prettyLinNm) {
-      if (linNm) {
-        free(linNm);
-        linNm = NULL;
+    char *ret = NULL;
+    FILE *osInfoFile = fopen(fileNm, "r");
+    // if we couldn't open the file return null
+    if (osInfoFile) {
+      if (strcmp(fileNm, osRelease) == 0)
+      {
+        // if we can't find the "PRETTY_NAME" we want a backup
+        char *name = "NAME";
+        char *linNm = restOfLineStartingWith(osInfoFile, name, strlen(name));
+
+        name = "PRETTY_NAME";
+        char *prettyLinNm = restOfLineStartingWith(osInfoFile, name, strlen(name));
+
+        // if we successfully got the line we wanted (PRETTY_NAME) then cleanup
+        if (prettyLinNm) {
+          if (linNm) {
+            free(linNm);
+            linNm = NULL;
+          }
+          ret = prettyLinNm;
+        } else {
+          if (linNm) {
+            ret = linNm;
+          }
+        }
+
+        if (ret) {
+          cleanLinNmStr(ret, strlen(ret));
+        }
+
+      } else {
+        //Assume the name is just the first line of the file
+        ret = readLine(osInfoFile);
       }
-      ret = prettyLinNm;
-    } else {
-      if (linNm) {
-        ret = linNm;
-      }
-    }
-
-    if (ret) {
-      cleanLinNmStr(ret, strlen(ret));
-    }
-
     fclose(osInfoFile);
   }
   return ret;
@@ -185,44 +211,14 @@ char *getTimeStr(void) {
     timeinfo = localtime(&thetime.tv_sec); // Convert the Unix time to localtime
 
     // Format the localtime into a string
-    strftime(currTime, maxCurrTmLen, "It is currently %A the %d/%m/%G at %R\n",
+    strftime(currTime, maxCurrTmLen, "It is currently %A the %d/%m/%G at %R",
              timeinfo);
   }
   return currTime;
 }
 
-bool cleanUp(void **to_clean, int to_clean_len) {
-  bool bad = 0;
-  for (int i = 0; i < to_clean_len; i++) {
-    if (!IS_ZERO(to_clean[i]))
-      free(to_clean[i]);
-    else
-      bad += 1;
-  }
-  return bad;
-}
-
-int main(void) {
-  int bad = false;
-
-  char *kVerStr = getKernelVer();
-  bad += IS_ZERO(kVerStr);
-
-  /* TODO: add features to read from ~/.inflocal when can't find
-   * /etc/os-release or are told to by cmd args */
-  char *linName = getLinNmFrom("/etc/os-release");
-  bad += IS_ZERO(linName);
-
-  char *timeStr = getTimeStr();
-  bad += IS_ZERO(timeStr);
-
-  if (!bad) {
-    printf("Running kernel %s on %s\n", kVerStr, linName);
-    // this culminates in us having a blank line below
-    printf("%s\n", timeStr);
-  } else
-    printf("Oops something went wrong error #%d", bad);
-
-  void *to_clean[] = {(void *)kVerStr, (void *)linName, (void *)timeStr};
-  return cleanUp(to_clean, sizeof(to_clean) / sizeof(void *));
+char *getLuaScriptString(const char *scriptFileName) {
+  lua_State *L = initLua();
+  char *luaString = getStringFromLuaScript(L, scriptFileName);
+  return luaString;
 }
