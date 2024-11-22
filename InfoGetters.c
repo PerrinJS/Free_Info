@@ -8,6 +8,7 @@
 #include <sys/utsname.h>
 
 #include "FreeInfo.h"
+#include "LuaScriptRunner.h"
 
 char *getKernelVer(void) {
   struct utsname releaseInfo;
@@ -210,8 +211,14 @@ char *getTimeStr(void) {
     timeinfo = localtime(&thetime.tv_sec); // Convert the Unix time to localtime
 
     // Format the localtime into a string
-    strftime(currTime, maxCurrTmLen, "It is currently %A the %d/%m/%G at %R\n",
+    strftime(currTime, maxCurrTmLen, "It is currently %A the %d/%m/%G at %R",
              timeinfo);
   }
   return currTime;
+}
+
+char *getLuaScriptString(const char *scriptFileName) {
+  lua_State *L = initLua();
+  char *luaString = getStringFromLuaScript(L, scriptFileName);
+  return luaString;
 }
